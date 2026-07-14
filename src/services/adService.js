@@ -4,13 +4,35 @@ const db = require("../config/db");
 const Ad = createModel("ads");
 const AdEvent = createModel("ad_events");
 
+/** Map new placement keys to legacy DB values for backward compatibility */
+const POSITION_QUERY_ALIASES = {
+  "Above Navbar": ["Above Navbar"],
+  "Below Hero Banner": ["Below Hero Banner", "Hero Banner", "Results Inline"],
+  Sidebar: ["Sidebar"],
+  "Above Footer": ["Above Footer", "Footer Strip"],
+  "Corner Popup": ["Corner Popup"]
+};
+
+const LEGACY_POSITION_NORMALIZE = {
+  "Hero Banner": "Below Hero Banner",
+  "Footer Strip": "Above Footer",
+  "Results Inline": "Below Hero Banner"
+};
+
+function normalizePosition(position) {
+  if (!position) return position;
+  return LEGACY_POSITION_NORMALIZE[position] || position;
+}
+
 const adService = {
   async getActiveAds(position, city) {
     let sql = "SELECT * FROM ads WHERE status = 'Active' AND (expiry IS NULL OR expiry >= CURDATE())";
     const params = [];
     if (position) {
-      sql += " AND position = ?";
-      params.push(position);
+      const normalized = normalizePosition(position);
+      const aliases = POSITION_QUERY_ALIASES[normalized] || [normalized];
+      sql += ` AND position IN (${aliases.map(() => "?").join(", ")})`;
+      params.push(...aliases);
     }
     const normalizedCity = city && city !== "undefined" && city !== "null" ? city : null;
     if (normalizedCity) {
@@ -32,14 +54,16 @@ const adService = {
 
   async createAd(payload) {
     const id = `ADS-${Date.now().toString().slice(-6)}`;
+    const position = normalizePosition(payload.position);
+    const placementRate = "Rs.5/day";
     return Ad.create({
       id,
       title: payload.title,
-      position: payload.position,
+      position,
       size: payload.size,
       city: payload.city,
       expiry: payload.expiry,
-      price: payload.price,
+      price: payload.price || placementRate,
       media_type: payload.media || "Image",
       media_url: payload.mediaUrl || null,
       target_url: payload.targetUrl || null,

@@ -1,5 +1,5 @@
 const db = require("../config/db");
-const { parseGallery } = require("../config/planLimits");
+const { parseGallery, sortSearchResults } = require("../config/planLimits");
 const { slugify } = require("../utils/idGenerator");
 
 const Business = {
@@ -90,7 +90,8 @@ const Business = {
       params.push(filters.premium);
     }
     sql += ` ORDER BY FIELD(plan, 'Featured', 'Premium', 'Free'), is_verified DESC, rating DESC, review_count DESC`;
-    return db.query(sql, params);
+    const rows = await db.query(sql, params);
+    return sortSearchResults(rows);
   },
 
   async findAll() {

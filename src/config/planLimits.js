@@ -106,6 +106,29 @@ function planUsageForBusiness(business, activeOfferingCount) {
   };
 }
 
+function compareBusinessRank(a, b) {
+  const verifiedDiff = (b.is_verified ? 1 : 0) - (a.is_verified ? 1 : 0);
+  if (verifiedDiff !== 0) return verifiedDiff;
+  const ratingDiff = (Number(b.rating) || 0) - (Number(a.rating) || 0);
+  if (ratingDiff !== 0) return ratingDiff;
+  return (b.review_count || 0) - (a.review_count || 0);
+}
+
+/** Featured listings fill the top N slots; remaining results sort by plan tier then rank signals. */
+function sortSearchResults(rows) {
+  const featured = rows.filter((r) => r.plan === "Featured").sort(compareBusinessRank);
+  const premium = rows.filter((r) => r.plan === "Premium").sort(compareBusinessRank);
+  const free = rows.filter((r) => r.plan === "Free").sort(compareBusinessRank);
+  const topFeatured = featured.slice(0, FEATURED_TOP_SLOTS);
+  const planOrder = { Featured: 0, Premium: 1, Free: 2 };
+  const rest = [...featured.slice(FEATURED_TOP_SLOTS), ...premium, ...free].sort((a, b) => {
+    const po = (planOrder[a.plan] ?? 2) - (planOrder[b.plan] ?? 2);
+    if (po !== 0) return po;
+    return compareBusinessRank(a, b);
+  });
+  return [...topFeatured, ...rest];
+}
+
 module.exports = {
   PLAN_LIMITS,
   PLAN_RANK,
@@ -119,5 +142,6 @@ module.exports = {
   canAccessLeadDashboard,
   assertOfferingLimit,
   assertPhotoLimit,
-  planUsageForBusiness
+  planUsageForBusiness,
+  sortSearchResults
 };

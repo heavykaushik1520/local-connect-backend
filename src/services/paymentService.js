@@ -39,12 +39,12 @@ function getRazorpay() {
 function formatAmount(plan) {
   const paise = PLAN_PRICES_PAISE[plan];
   if (!paise) return "Rs.0";
-  return `Rs.${paise / 100}/Year`;
+  return `Rs.${paise / 100}/month`;
 }
 
-function addOneYear(date = new Date()) {
+function addOneMonth(date = new Date()) {
   const d = new Date(date);
-  d.setFullYear(d.getFullYear() + 1);
+  d.setMonth(d.getMonth() + 1);
   return d.toISOString().slice(0, 10);
 }
 
@@ -162,7 +162,7 @@ const paymentService = {
     }
 
     const business = await assertBusinessOwner(subscription.business_id, user);
-    const renewsOn = addOneYear();
+    const renewsOn = addOneMonth();
 
     await Subscription.update(subscription.id, {
       payment_status: "Paid",
